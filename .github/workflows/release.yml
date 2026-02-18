@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: tag
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Package addon
+        run: |
+          mkdir -p GUnit
+          cp *.lua *.toc *.md LICENSE logo.png GUnit/ 2>/dev/null || true
+          zip -r GUnit-${{ steps.tag.outputs.version }}.zip GUnit/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: GUnit-${{ steps.tag.outputs.version }}.zip
+          generate_release_notes: true
