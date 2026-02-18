@@ -1,0 +1,13 @@
+# WoW SavedVariables
+*.lua.bak
+
+# OS files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
