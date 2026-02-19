@@ -69,6 +69,7 @@ local function AddFromTargetUnit()
     end
     HitList:UpdateValidationFromUnit(targetName, "target")
     SaveAndBroadcast(created)
+    Comm:BroadcastReason(HitList:Get(targetName))
     GUnit:Print("Hit added: " .. targetName .. " (one-time, no bounty).")
     local openedTarget = HitList:Get(targetName)
     local openMsg = "A hit on " .. Utils.TargetLabel(openedTarget) .. " has been opened."
@@ -90,6 +91,7 @@ local function AddByName(name)
         target = ApplyDefaultsToNewHit(target)
     end
     SaveAndBroadcast(target)
+    Comm:BroadcastReason(target)
     GUnit:Print("Hit added: " .. target.name .. " (unverified, one-time, no bounty).")
     local openMsg = "A hit on " .. Utils.TargetLabel(target) .. " has been opened."
     if (target.bountyAmount or 0) > 0 then
@@ -121,6 +123,7 @@ local function DoSetReason(name, reason)
         return
     end
     SaveAndBroadcast(updated)
+    Comm:BroadcastReason(updated)
     GUnit:Print("Reason updated for " .. updated.name .. ".")
 end
 
@@ -289,6 +292,25 @@ SlashCmdList["GUNIT"] = function(msg)
             GUnit.Sync:RequestSync()
             GUnit:Print("Sync requested.")
         end
+        return
+    end
+    if input == "debug" then
+        local s = GUnit.db and GUnit.db.settings
+        if s then
+            s.debugMode = not s.debugMode
+            GUnit:Print("Debug mode: " .. (s.debugMode and "ON" or "OFF"))
+        end
+        return
+    end
+    if input == "stats" then
+        local s = Comm.stats or {}
+        GUnit:Print("Sent: " .. (s.sent or 0) .. "  Dropped: " .. (s.dropped_oversize or 0))
+        local parts = {}
+        for action, count in pairs(s.received or {}) do
+            table.insert(parts, action .. "=" .. count)
+        end
+        table.sort(parts)
+        GUnit:Print("Received: " .. (#parts > 0 and table.concat(parts, ", ") or "none"))
         return
     end
     -- Forward all other commands to the hit list handler
