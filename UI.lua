@@ -370,7 +370,8 @@ local function CommitEditModeFields()
     local changed = false
 
     local newReason = (UI.reasonEdit and UI.reasonEdit:GetText()) or ""
-    if newReason ~= (latest.reason or "") then
+    local reasonChanged = newReason ~= (latest.reason or "")
+    if reasonChanged then
         local updated = HitList:SetReason(latest.name, newReason, Utils.PlayerName())
         if updated then
             latest = updated
@@ -395,6 +396,9 @@ local function CommitEditModeFields()
 
     if changed then
         SaveTargetAndBroadcast(latest)
+    end
+    if reasonChanged then
+        Comm:BroadcastReason(latest)
     end
 end
 
@@ -1336,6 +1340,20 @@ function UI:ShowOptionsModal()
     announceToggle:SetChecked(settings.uiGuildAnnouncements)
     announceToggle:SetScript("OnClick", function(selfBtn)
         settings.uiGuildAnnouncements = selfBtn:GetChecked() and true or false
+    end)
+
+    local debugToggle = CreateLabeledCheckButton(
+        rightCol,
+        "Debug logging (sync diagnostics)",
+        announceToggle,
+        "BOTTOMLEFT",
+        0,
+        -10
+    )
+    debugToggle:SetChecked(settings.debugMode)
+    debugToggle:SetScript("OnClick", function(selfBtn)
+        settings.debugMode = selfBtn:GetChecked() and true or false
+        GUnit:Print("Debug mode: " .. (settings.debugMode and "ON" or "OFF"))
     end)
 
     local exportHelp = exportPane:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

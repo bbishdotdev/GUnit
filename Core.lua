@@ -1,6 +1,6 @@
 local ADDON_NAME, GUnit = ...
 
-GUnit.VERSION = "0.2.0"
+GUnit.VERSION = "0.4.0"
 GUnit.PRINT_PREFIX = "|cffff5555[G-Unit]|r "
 
 local DB_DEFAULTS = {
@@ -15,6 +15,7 @@ local DB_DEFAULTS = {
         rememberDrawerState = true,
         drawerOpen = true,
         uiGuildAnnouncements = true,
+        debugMode = false,
     },
 }
 
@@ -36,6 +37,11 @@ end
 
 function GUnit:Print(message)
     print(self.PRINT_PREFIX .. tostring(message))
+end
+
+function GUnit:Debug(message)
+    if not self.db or not self.db.settings or not self.db.settings.debugMode then return end
+    print("|cff888888[G-Unit DBG]|r " .. tostring(message))
 end
 
 function GUnit:NotifyDataChanged()

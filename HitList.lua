@@ -164,6 +164,21 @@ local function EnsureTarget(name, actorName, ts)
     return GUnit.db.targets[name]
 end
 
+function HitList:EnsureAndSetReason(name, submitter, guildName, reason, ts)
+    local normalized = Utils.NormalizeName(name)
+    if not normalized then return nil end
+    local now = ts or Utils.Now()
+    local sub = Utils.NormalizeName(submitter) or submitter or "Unknown"
+    local target = EnsureTarget(normalized, sub, now)
+    if guildName and guildName ~= "" then
+        target.guildName = guildName
+    end
+    if target.updatedAt and target.updatedAt > now then return target end
+    target.reason = reason or ""
+    target.updatedAt = now
+    return target
+end
+
 function HitList:Constants()
     return {
         HIT_MODE_ONE_TIME = HIT_MODE_ONE_TIME,

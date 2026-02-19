@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.4.0
+
+### Fixed
+- **Guild sync completely broken** — all target data messages (UPSERT, SYNC_DATA, SYNC_PUSH) exceeded WoW TBC Classic's 255-byte addon message limit and were silently dropped. Guild chat announcements worked but no target data ever reached other guild members.
+- **Sync deadlock** — if a sync responder disconnected mid-transfer, `isSyncing` stayed true forever, blocking all future sync attempts until relog
+
+### Changed
+- **New wire protocol (v1)** — compact 1-2 character wire keys replace verbose field names, reducing message size by ~60%
+- **Field group splitting** — target data split into Core (~130b), Meta (~80b), Location (~160b), and Reason (~170b) messages. Each group is well under the 245-byte limit regardless of data content.
+- **Reason sent as separate message** — reason text gets its own 245-byte budget (~175 chars). Self-sufficient: carries submitter/guild so it can create stub targets if needed.
+- **Flat sync encoding** — sync entries encoded in a single pass instead of nested encoding that doubled payload size from separator escaping
+
+### Added
+- Debug logging toggle (`/gunit debug` or Options checkbox) for sync diagnostics — logs every sent/received message with size and status
+- `/gunit stats` command — session counters for sent, dropped, and received messages by action type
+- Protocol version tag (`v=1`) on all outbound messages for future evolution
+- 15-second watchdog timer on sync claims to prevent deadlocks
+- `HitList:EnsureAndSetReason()` for self-sufficient reason handling
+- `SYNC.md` — full protocol reference documentation
+
+---
+
 ## v0.3.0
 
 ### Added
