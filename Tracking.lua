@@ -34,6 +34,18 @@ local function SendGuildMessage(message)
     Utils.SendGuildChat(message)
 end
 
+local function ShouldAnnounceToParty()
+    local db = GUnit.db or {}
+    local settings = db.settings or {}
+    return settings.partyAnnouncements == true
+end
+
+local function SendPartyMessage(message)
+    if ShouldAnnounceToParty() then
+        Utils.SendPartyChat(message)
+    end
+end
+
 local function PlayAlertSound()
     if not PlaySound then
         return
@@ -159,6 +171,7 @@ local function ProcessTargetSighting(targetName, source, hasUnitMetadata)
     if not target then return end
     if ShouldAlertForEntry(targetName, now) then
         LocalAlert("G-Unit target found in your area: " .. target.name .. ". Be on the lookout!")
+        SendPartyMessage("Target spotted nearby: " .. Utils.TargetLabel(target) .. ". Be on the lookout!")
     end
 end
 
@@ -196,7 +209,9 @@ local function AnnounceEngageIfNeeded()
     if not hitTarget then return end
     if not HitList:ShouldAnnounceSighting(hitTarget) then return end
 
-    SendGuildMessage("Attempting to kill " .. Utils.TargetLabel(hitTarget) .. "! Hit was placed by " .. hitTarget.submitter .. ".")
+    local engageMsg = "Attempting to kill " .. Utils.TargetLabel(hitTarget) .. "! Hit was placed by " .. hitTarget.submitter .. "."
+    SendGuildMessage(engageMsg)
+    SendPartyMessage(engageMsg)
 end
 
 local function OnCombatLogEvent()
@@ -234,7 +249,9 @@ local function OnCombatLogEvent()
     Comm:BroadcastUpsert(updatedTarget)
     GUnit:NotifyDataChanged()
 
-    SendGuildMessage(Utils.TargetLabel(target) .. " has been killed! Hit placed by " .. target.submitter .. ".")
+    local killMsg = Utils.TargetLabel(target) .. " has been killed! Hit placed by " .. target.submitter .. "."
+    SendGuildMessage(killMsg)
+    SendPartyMessage(killMsg)
     SendChatMessage("[G-Unit] " .. target.name .. " has been killed for you.", "WHISPER", nil, target.submitter)
 end
 

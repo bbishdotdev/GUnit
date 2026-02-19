@@ -40,6 +40,13 @@ local function MaybeAnnounce(message)
     end
 end
 
+local function MaybeAnnounceParty(message)
+    local settings = GetSettings()
+    if settings.partyAnnouncements then
+        Utils.SendPartyChat(message)
+    end
+end
+
 local function HitModeValueLabel(target)
     return target.hitMode == "kos" and "Indefinitely" or "One-time"
 end
@@ -1342,10 +1349,23 @@ function UI:ShowOptionsModal()
         settings.uiGuildAnnouncements = selfBtn:GetChecked() and true or false
     end)
 
+    local partyToggle = CreateLabeledCheckButton(
+        rightCol,
+        "Party announcements",
+        announceToggle,
+        "BOTTOMLEFT",
+        0,
+        -10
+    )
+    partyToggle:SetChecked(settings.partyAnnouncements)
+    partyToggle:SetScript("OnClick", function(selfBtn)
+        settings.partyAnnouncements = selfBtn:GetChecked() and true or false
+    end)
+
     local debugToggle = CreateLabeledCheckButton(
         rightCol,
         "Debug logging (sync diagnostics)",
-        announceToggle,
+        partyToggle,
         "BOTTOMLEFT",
         0,
         -10
@@ -2077,13 +2097,17 @@ function UI:Init()
                 if updated then
                     Comm:BroadcastUpsert(updated)
                     GUnit:Print("Hit on " .. targetName .. " closed (kill history preserved).")
-                    MaybeAnnounce("The hit on " .. Utils.TargetLabel(updated) .. " has been closed.")
+                    local closeMsg = "The hit on " .. Utils.TargetLabel(updated) .. " has been closed."
+                    MaybeAnnounce(closeMsg)
+                    MaybeAnnounceParty(closeMsg)
                 end
             else
                 HitList:Delete(targetName)
                 Comm:BroadcastDelete(targetName)
                 GUnit:Print("Hit on " .. targetName .. " has been called off.")
-                MaybeAnnounce("The hit on " .. targetName .. " has been called off.")
+                local callOffMsg = "The hit on " .. targetName .. " has been called off."
+                MaybeAnnounce(callOffMsg)
+                MaybeAnnounceParty(callOffMsg)
             end
             UI.selectedName = nil
             UI._callOffTargetName = nil

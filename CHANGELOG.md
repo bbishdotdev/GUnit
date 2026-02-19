@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.4.1
+
+### Added
+- **Party chat announcements** — hit added, called off, target spotted nearby, engagement, and kill events now broadcast to party chat alongside guild chat
+- **Party announcements setting** — toggle in Settings > General to enable/disable party broadcasts independently from guild announcements
+- `/gunit guildies` command — lists all known addon users in your guild with last-seen timestamps
+- `Utils.RelativeTime()` helper for human-readable time formatting
+
+### Fixed
+- **Guildie counter robustness** — self-registration now re-fires on `GUILD_ROSTER_UPDATE` to fix nil guild name from early login; counter cross-references the guild roster to prune ex-guildies
+- **CLI remove missing guild announcement** — `/ghit remove` now announces "called off" to guild chat (was local print only)
+- **Import/export semicolon corruption** — field values containing `;` or `%` are now escaped in exports and unescaped on import, preventing field misalignment
+
+### Changed
+- Guild roster is proactively requested on login so roster data is available for addon user validation
+
+---
+
 ## v0.4.0
 
 ### Fixed

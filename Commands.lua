@@ -8,6 +8,13 @@ local function SaveAndBroadcast(target)
     GUnit:NotifyDataChanged()
 end
 
+local function MaybeAnnounceParty(message)
+    local settings = GUnit.db and GUnit.db.settings or {}
+    if settings.partyAnnouncements then
+        Utils.SendPartyChat(message)
+    end
+end
+
 local function ApplyDefaultsToNewHit(target)
     if not target then return target end
     local settings = GUnit.db and GUnit.db.settings or nil
@@ -77,6 +84,7 @@ local function AddFromTargetUnit()
         openMsg = openMsg .. " Bounty: " .. Utils.GoldStringFromCopper(openedTarget.bountyAmount) .. "."
     end
     Utils.SendGuildChat(openMsg)
+    MaybeAnnounceParty(openMsg)
 end
 
 local function AddByName(name)
@@ -98,6 +106,7 @@ local function AddByName(name)
         openMsg = openMsg .. " Bounty: " .. Utils.GoldStringFromCopper(target.bountyAmount) .. "."
     end
     Utils.SendGuildChat(openMsg)
+    MaybeAnnounceParty(openMsg)
 end
 
 local function DoRemove(name)
@@ -110,10 +119,13 @@ local function DoRemove(name)
         GUnit:Print("Only submitter can remove this hit.")
         return
     end
+    local callOffMsg = "The hit on " .. Utils.TargetLabel(target) .. " has been called off."
     HitList:Delete(name)
     Comm:BroadcastDelete(name)
     GUnit:NotifyDataChanged()
     GUnit:Print("Removed hit: " .. name)
+    Utils.SendGuildChat(callOffMsg)
+    MaybeAnnounceParty(callOffMsg)
 end
 
 local function DoSetReason(name, reason)
@@ -300,6 +312,35 @@ SlashCmdList["GUNIT"] = function(msg)
             s.debugMode = not s.debugMode
             GUnit:Print("Debug mode: " .. (s.debugMode and "ON" or "OFF"))
         end
+        return
+    end
+    if input == "guildies" then
+        local guildName = Utils.GuildName()
+        if not guildName then
+            GUnit:Print("Not in a guild.")
+            return
+        end
+        local roster, rosterSize = GUnit:BuildGuildRosterSet()
+        local users = GUnit.db and GUnit.db.knownAddonUsers or {}
+        local list = {}
+        for key, entry in pairs(users) do
+            if entry.guildName == guildName then
+                if rosterSize > 0 and not roster[key] then
+                    users[key] = nil
+                else
+                    table.insert(list, entry)
+                end
+            end
+        end
+        table.sort(list, function(a, b)
+            return (a.lastSeen or 0) > (b.lastSeen or 0)
+        end)
+        GUnit:Print("Known addon users:")
+        for _, entry in ipairs(list) do
+            local seen = entry.lastSeen and entry.lastSeen > 0 and Utils.RelativeTime(entry.lastSeen) or "unknown"
+            GUnit:Print("  " .. entry.name .. " - last seen " .. seen)
+        end
+        GUnit:Print("Total: " .. #list)
         return
     end
     if input == "stats" then
