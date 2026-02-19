@@ -1,6 +1,6 @@
 local ADDON_NAME, GUnit = ...
 
-GUnit.VERSION = "0.4.0"
+GUnit.VERSION = "0.4.1"
 GUnit.PRINT_PREFIX = "|cffff5555[G-Unit]|r "
 
 local DB_DEFAULTS = {
@@ -15,6 +15,7 @@ local DB_DEFAULTS = {
         rememberDrawerState = true,
         drawerOpen = true,
         uiGuildAnnouncements = true,
+        partyAnnouncements = true,
         debugMode = false,
     },
 }
@@ -62,16 +63,36 @@ function GUnit:RegisterKnownAddonUser(name, guildName)
     self.db.knownAddonUsers[normalized] = entry
 end
 
+function GUnit:BuildGuildRosterSet()
+    local roster = {}
+    local numMembers = GetNumGuildMembers and GetNumGuildMembers() or 0
+    for i = 1, numMembers do
+        local name = GetGuildRosterInfo(i)
+        if name then
+            local normalized = self.Utils and self.Utils.NormalizeName and self.Utils.NormalizeName(name) or nil
+            if normalized then
+                roster[normalized] = true
+            end
+        end
+    end
+    return roster, numMembers
+end
+
 function GUnit:KnownAddonUserCountForCurrentGuild()
     if not self.db then return 0 end
     local guildName = self.Utils and self.Utils.GuildName and self.Utils.GuildName() or nil
     if not guildName then return 0 end
 
+    local roster, rosterSize = self:BuildGuildRosterSet()
     local users = self.db.knownAddonUsers or {}
     local count = 0
-    for _, entry in pairs(users) do
+    for key, entry in pairs(users) do
         if entry.guildName == guildName then
-            count = count + 1
+            if rosterSize > 0 and not roster[key] then
+                users[key] = nil
+            else
+                count = count + 1
+            end
         end
     end
     return count
@@ -128,6 +149,10 @@ local function OnPlayerLogin()
         GUnit.UI:Init()
     end
 
+    if GUnit.Utils.InGuild() and GuildRoster then
+        pcall(GuildRoster)
+    end
+
     -- Auto-sync guild data after a short delay (guild roster needs time to load)
     if GUnit.Sync and GUnit.Utils.InGuild() then
         C_Timer.After(3, function()
@@ -139,3 +164,10 @@ local function OnPlayerLogin()
 end
 
 GUnit:RegisterEvent("PLAYER_LOGIN", OnPlayerLogin)
+
+GUnit:RegisterEvent("GUILD_ROSTER_UPDATE", function()
+    if not GUnit.db then return end
+    local guildName = GUnit.Utils and GUnit.Utils.GuildName and GUnit.Utils.GuildName()
+    if not guildName then return end
+    GUnit:RegisterKnownAddonUser(GUnit.Utils.PlayerName(), guildName)
+end)

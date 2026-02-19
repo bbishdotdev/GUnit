@@ -86,9 +86,20 @@ end
 
 local GUILD_MSG_PREFIX = "[G-Unit] "
 
+function Utils.InParty()
+    if IsInGroup then return IsInGroup() end
+    return GetNumGroupMembers and GetNumGroupMembers() > 0
+end
+
 function Utils.SendGuildChat(message)
     if Utils.InGuild() and SendChatMessage then
         SendChatMessage(GUILD_MSG_PREFIX .. message, "GUILD")
+    end
+end
+
+function Utils.SendPartyChat(message)
+    if Utils.InParty() and SendChatMessage then
+        SendChatMessage(GUILD_MSG_PREFIX .. message, "PARTY")
     end
 end
 
@@ -217,6 +228,14 @@ end
 
 function Utils.Now()
     return time()
+end
+
+function Utils.RelativeTime(timestamp)
+    local diff = Utils.Now() - (tonumber(timestamp) or 0)
+    if diff < 60 then return "just now" end
+    if diff < 3600 then return math.floor(diff / 60) .. "m ago" end
+    if diff < 86400 then return math.floor(diff / 3600) .. "h ago" end
+    return math.floor(diff / 86400) .. "d ago"
 end
 
 function Utils.ClassColorName(name, classToken)

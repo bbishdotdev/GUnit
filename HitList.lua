@@ -568,6 +568,23 @@ function HitList:GetBountyOwed(targetName, killerName)
 end
 
 local FIELD_SEP = ";"
+
+local function ExportEscape(value)
+    value = tostring(value or "")
+    value = value:gsub("%%", "%%25")
+    value = value:gsub(";", "%%3B")
+    value = value:gsub("\n", "%%0A")
+    return value
+end
+
+local function ExportUnescape(value)
+    value = tostring(value or "")
+    value = value:gsub("%%0A", "\n")
+    value = value:gsub("%%3B", ";")
+    value = value:gsub("%%25", "%%")
+    return value
+end
+
 local EXPORT_FIELDS = {
     "name", "submitter", "guildName", "reason", "bountyAmount",
     "hitMode", "hitStatus", "bountyMode", "bountyStatus",
@@ -616,7 +633,7 @@ function HitList:ExportCurrentGuild()
             elseif key == "lastSeenConfidenceYards" then
                 val = target.lastKnownLocation and target.lastKnownLocation.confidenceYards or ""
             end
-            table.insert(fields, tostring(val or ""))
+            table.insert(fields, ExportEscape(val))
         end
         table.insert(lines, table.concat(fields, FIELD_SEP))
     end
@@ -649,7 +666,7 @@ function HitList:ImportFromString(data)
             if schema then
                 local payload = {}
                 for i, key in ipairs(schema) do
-                    payload[key] = fields[i]
+                    payload[key] = ExportUnescape(fields[i])
                 end
                 if payload.name and payload.name ~= "" then
                     self:UpsertFromComm(payload)
