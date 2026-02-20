@@ -48,6 +48,12 @@ function Utils.IsSubmitter(target, playerName)
     return target.submitter == (playerName or Utils.PlayerName())
 end
 
+function Utils.IsSubmitterUnknown(target)
+    if not target then return true end
+    local submitter = target.submitter
+    return (not submitter) or submitter == "" or submitter == "Unknown"
+end
+
 function Utils.Escape(value)
     value = tostring(value or "")
     value = value:gsub("%%", "%%25")

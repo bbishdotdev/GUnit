@@ -371,7 +371,7 @@ end
 local function CommitEditModeFields()
     local target = RequireSelectedTarget()
     if not target then return end
-    if not Utils.IsSubmitter(target) then return end
+    if not HitList:CanMutate(target, Utils.PlayerName()) then return end
 
     local latest = target
     local changed = false
@@ -818,13 +818,13 @@ function UI:RefreshDetails()
     local bountyModeLabels = { none = "None", first_kill = "One-time", infinite = "Indefinitely" }
     UIDropDownMenu_SetText(self.bountyModeDropdown, bountyModeLabels[target.bountyMode] or "None")
 
-    local isSubmitter = Utils.IsSubmitter(target)
-    if not isSubmitter then
+    local canMutate = HitList:CanMutate(target, Utils.PlayerName())
+    if not canMutate then
         self.detailEditMode = false
     end
-    local editMode = isSubmitter and self.detailEditMode == true
+    local editMode = canMutate and self.detailEditMode == true
 
-    if isSubmitter then
+    if canMutate then
         self.detailEditButton:Show()
         self.detailEditButton:SetText(editMode and "Save" or "Edit")
     else
@@ -945,7 +945,7 @@ function UI:RefreshDetails()
     self.killDetailsHeader:Show()
     self.killDetailsHeader:SetAlpha(1)
 
-    local canTogglePaid = editMode and isSubmitter
+    local canTogglePaid = editMode and canMutate
     local groupedKills = BuildKillDetailsByKiller(target)
     local shownCount = math.min(#groupedKills, MAX_KILL_DETAIL_ROWS)
 
@@ -1005,18 +1005,18 @@ function UI:RefreshDetails()
     end
 
     local isActive = target.hitStatus == "active"
-    if isSubmitter and isActive then
+    if canMutate and isActive then
         self.callOffButton:Show()
     else
         self.callOffButton:Hide()
     end
-    if isSubmitter and not isActive then
+    if canMutate and not isActive then
         self.reopenButton:Show()
     else
         self.reopenButton:Hide()
     end
 
-    local allowManualPick = isSubmitter and (target.validated ~= true)
+    local allowManualPick = canMutate and (target.validated ~= true)
     if allowManualPick then
         self.detailClassPickButton:Enable()
         self.detailRacePickButton:Enable()
@@ -1610,7 +1610,7 @@ function UI:Init()
     self.detailClassPickButton:RegisterForClicks("LeftButtonUp")
     self.detailClassPickButton:SetScript("OnClick", function()
         local target = RequireSelectedTarget()
-        if not target or target.validated == true or not Utils.IsSubmitter(target) then
+        if not target or target.validated == true or not HitList:CanMutate(target, Utils.PlayerName()) then
             return
         end
         ShowPickerMenu(CLASS_PICK_OPTIONS, function(classToken)
@@ -1629,7 +1629,7 @@ function UI:Init()
     self.detailRacePickButton:RegisterForClicks("LeftButtonUp")
     self.detailRacePickButton:SetScript("OnClick", function()
         local target = RequireSelectedTarget()
-        if not target or target.validated == true or not Utils.IsSubmitter(target) then
+        if not target or target.validated == true or not HitList:CanMutate(target, Utils.PlayerName()) then
             return
         end
 
@@ -1926,7 +1926,7 @@ function UI:Init()
         row.paidButton:SetScript("OnClick", function()
             if not row._killerName or not UI.selectedName then return end
             local target = HitList:Get(UI.selectedName)
-            if not target or not Utils.IsSubmitter(target) then return end
+            if not target or not HitList:CanMutate(target, Utils.PlayerName()) then return end
             local claim = target.bountyClaims and target.bountyClaims[row._killerName]
             if not claim then return end
             local isPaid = (claim.paidCopper or 0) >= (claim.totalCopper or 0)
