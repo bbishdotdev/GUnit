@@ -1,6 +1,6 @@
 local ADDON_NAME, GUnit = ...
 
-GUnit.VERSION = "0.4.1"
+GUnit.VERSION = "0.5.0"
 GUnit.PRINT_PREFIX = "|cffff5555[G-Unit]|r "
 
 local DB_DEFAULTS = {
@@ -121,6 +121,8 @@ local function OnPlayerLogin()
 
     CopyDefaults(GUnitDB, DB_DEFAULTS)
     GUnit.db = GUnitDB
+    -- Normalize legacy/non-boolean values so debug is only enabled when explicitly true.
+    GUnit.db.settings.debugMode = (GUnit.db.settings.debugMode == true)
     GUnit:RegisterKnownAddonUser(GUnit.Utils.PlayerName(), GUnit.Utils.GuildName())
 
     -- Migration: backfill guildName on entries created before guild-scoping

@@ -21,12 +21,17 @@ local function GenerateRequestId()
 end
 
 local function BuildReasonMap(target)
+    local reason = target.reason or ""
+    local reasonTs = tonumber(target.reasonUpdatedAt) or target.updatedAt or Utils.Now()
+    local isExplicitClear = (reason == "") and (tonumber(target.reasonClearedAt) == reasonTs)
     return {
         action = "REASON",
         name = target.name,
         submitter = target.submitter,
         guildName = target.guildName or Utils.GuildName() or "",
-        reason = target.reason or "",
+        reason = reason,
+        reasonUpdatedAt = reasonTs,
+        reasonClear = isExplicitClear and "1" or "0",
         updatedAt = target.updatedAt or Utils.Now(),
     }
 end
