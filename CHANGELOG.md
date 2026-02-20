@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.6.0
+
+### Fixed
+- **Submitter downgrade guard** — sync merge no longer allows a valid submitter to be overwritten by incoming `Unknown` values from stale clients.
+- **Same-faction add regression** — adding from target now properly removes same-faction entries when validation detects friendly faction.
+
+### Added
+- **Unknown submitter recovery tools** — `Unknown` submitter records are now editable for recovery, including new `/ghit submitter <name> <submitter>` command for manual reassignment.
+
+### Changed
+- UI edit permissions now use mutate capability (`submitter` or `Unknown`) so recovery edits are available directly in detail view.
+- Addon metadata version bumped to `0.6.0` in both runtime (`Core.lua`) and TOC (`GUnit.toc`).
+
+---
+
 ## v0.5.0
 
 ### Fixed

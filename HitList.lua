@@ -277,7 +277,8 @@ function HitList:GetAllForCurrentGuild()
 end
 
 function HitList:CanMutate(target, actorName)
-    return target and Utils.IsSubmitter(target, actorName)
+    if not target then return false end
+    return Utils.IsSubmitter(target, actorName) or Utils.IsSubmitterUnknown(target)
 end
 
 function HitList:CreateOrTouch(name, actorName, reason, ts)
@@ -383,6 +384,19 @@ function HitList:SetHitStatus(name, status, actorName)
     return target
 end
 
+function HitList:SetSubmitter(name, submitterName, actorName)
+    local target = self:Get(name)
+    if not target then return nil, "Target not found." end
+    if not self:CanMutate(target, actorName) then return nil, "Only submitter can change submitter." end
+
+    local normalized = Utils.NormalizeName(submitterName)
+    if not normalized then return nil, "Invalid submitter name." end
+
+    target.submitter = normalized
+    target.updatedAt = Utils.Now()
+    return target
+end
+
 function HitList:ShouldAnnounceSighting(target)
     if not target then return false end
     return target.hitStatus == HIT_STATUS_ACTIVE
@@ -407,7 +421,13 @@ function HitList:UpsertFromComm(payload)
     end
 
     if incomingSubmitter and incomingSubmitter ~= "" then
-        target.submitter = incomingSubmitter
+        local incomingUnknown = incomingSubmitter == "Unknown"
+        local currentUnknown = Utils.IsSubmitterUnknown(target)
+        if not incomingUnknown then
+            target.submitter = incomingSubmitter
+        elseif currentUnknown then
+            target.submitter = "Unknown"
+        end
     elseif not target.submitter or target.submitter == "" then
         target.submitter = "Unknown"
     end

@@ -74,9 +74,17 @@ local function AddFromTargetUnit()
     if not wasExisting then
         created = ApplyDefaultsToNewHit(created)
     end
-    HitList:UpdateValidationFromUnit(targetName, "target")
-    SaveAndBroadcast(created)
-    Comm:BroadcastReason(HitList:Get(targetName))
+    local _, validationErr = HitList:UpdateValidationFromUnit(targetName, "target")
+    if validationErr == "Same faction." then
+        HitList:Delete(targetName)
+        Comm:BroadcastDelete(targetName)
+        GUnit:NotifyDataChanged()
+        GUnit:Print("Removed " .. targetName .. " from hit list: same faction.")
+        return
+    end
+    local latest = HitList:Get(targetName) or created
+    SaveAndBroadcast(latest)
+    Comm:BroadcastReason(latest)
     GUnit:Print("Hit added: " .. targetName .. " (one-time, no bounty).")
     local openedTarget = HitList:Get(targetName)
     local openMsg = "A hit on " .. Utils.TargetLabel(openedTarget) .. " has been opened."
@@ -191,6 +199,17 @@ local function DoSetStatus(name, status)
     GUnit:Print("Status updated for " .. updated.name .. ": " .. status .. ".")
 end
 
+local function DoSetSubmitter(name, submitterName)
+    local updated, err = HitList:SetSubmitter(name, submitterName, Utils.PlayerName())
+    if not updated then
+        GUnit:Print(err)
+        return
+    end
+    SaveAndBroadcast(updated)
+    Comm:BroadcastReason(updated)
+    GUnit:Print("Submitter updated for " .. updated.name .. ": " .. updated.submitter .. ".")
+end
+
 local function OpenUI()
     if GUnit.UI and GUnit.UI.Toggle then
         GUnit.UI:Toggle()
@@ -273,6 +292,15 @@ local function HandleGhitCommand(msg)
     end
     if cmd == "reopen" then
         DoSetStatus(rest, "active")
+        return
+    end
+    if cmd == "submitter" then
+        local name, submitterName = rest:match("^(%S+)%s+(.+)$")
+        if not name then
+            GUnit:Print("Usage: /ghit submitter <name> <submitter>")
+            return
+        end
+        DoSetSubmitter(name, submitterName)
         return
     end
 

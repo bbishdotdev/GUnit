@@ -1,6 +1,6 @@
 local ADDON_NAME, GUnit = ...
 
-GUnit.VERSION = "0.5.0"
+GUnit.VERSION = "0.6.0"
 GUnit.PRINT_PREFIX = "|cffff5555[G-Unit]|r "
 
 local DB_DEFAULTS = {
