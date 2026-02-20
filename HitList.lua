@@ -135,6 +135,21 @@ local function NormalizeLocationPayload(location, defaultSource)
     }
 end
 
+local function HasIncomingLocationPayload(payload)
+    if type(payload) ~= "table" then
+        return false
+    end
+    return payload.lastSeenZone ~= nil
+        or payload.lastSeenSubzone ~= nil
+        or payload.lastSeenMapId ~= nil
+        or payload.lastSeenX ~= nil
+        or payload.lastSeenY ~= nil
+        or payload.lastSeenAt ~= nil
+        or payload.lastSeenSource ~= nil
+        or payload.lastSeenApproximate ~= nil
+        or payload.lastSeenConfidenceYards ~= nil
+end
+
 local function EnsureTarget(name, actorName, ts)
     if not GUnit.db.targets[name] then
         GUnit.db.targets[name] = {
@@ -142,6 +157,8 @@ local function EnsureTarget(name, actorName, ts)
             submitter = actorName,
             guildName = Utils.GuildName(),
             reason = "",
+            reasonUpdatedAt = nil,
+            reasonClearedAt = nil,
             bountyAmount = 0,
             hitMode = HIT_MODE_ONE_TIME,
             hitStatus = HIT_STATUS_ACTIVE,
@@ -164,7 +181,7 @@ local function EnsureTarget(name, actorName, ts)
     return GUnit.db.targets[name]
 end
 
-function HitList:EnsureAndSetReason(name, submitter, guildName, reason, ts)
+function HitList:EnsureAndSetReason(name, submitter, guildName, reason, ts, reasonUpdatedAt, reasonClear)
     local normalized = Utils.NormalizeName(name)
     if not normalized then return nil end
     local now = ts or Utils.Now()
@@ -173,9 +190,26 @@ function HitList:EnsureAndSetReason(name, submitter, guildName, reason, ts)
     if guildName and guildName ~= "" then
         target.guildName = guildName
     end
-    if target.updatedAt and target.updatedAt > now then return target end
-    target.reason = reason or ""
-    target.updatedAt = now
+    local incomingReason = reason or ""
+    local incomingReasonTs = tonumber(reasonUpdatedAt) or tonumber(ts) or Utils.Now()
+    local currentReasonTs = tonumber(target.reasonUpdatedAt) or 0
+    local shouldClear = (reasonClear == true) or (reasonClear == "1")
+
+    if incomingReasonTs < currentReasonTs then
+        return target
+    end
+
+    if incomingReason ~= "" then
+        target.reason = incomingReason
+        target.reasonUpdatedAt = incomingReasonTs
+        target.reasonClearedAt = nil
+    elseif shouldClear then
+        target.reason = ""
+        target.reasonUpdatedAt = incomingReasonTs
+        target.reasonClearedAt = incomingReasonTs
+    end
+
+    target.updatedAt = math.max(now, incomingReasonTs)
     return target
 end
 
@@ -275,8 +309,15 @@ function HitList:SetReason(name, reason, actorName)
     local target = self:Get(name)
     if not target then return nil, "Target not found." end
     if not self:CanMutate(target, actorName) then return nil, "Only submitter can edit this hit." end
+    local now = Utils.Now()
     target.reason = reason or ""
-    target.updatedAt = Utils.Now()
+    target.reasonUpdatedAt = now
+    if target.reason == "" then
+        target.reasonClearedAt = now
+    else
+        target.reasonClearedAt = nil
+    end
+    target.updatedAt = now
     return target
 end
 
@@ -351,7 +392,8 @@ function HitList:UpsertFromComm(payload)
     local normalized = Utils.NormalizeName(payload.name)
     if not normalized then return nil end
     local ts = tonumber(payload.updatedAt) or Utils.Now()
-    local submitter = Utils.NormalizeName(payload.submitter) or payload.submitter or "Unknown"
+    local incomingSubmitter = Utils.NormalizeName(payload.submitter) or payload.submitter
+    local submitter = incomingSubmitter or "Unknown"
 
     local target = EnsureTarget(normalized, submitter, ts)
 
@@ -364,8 +406,16 @@ function HitList:UpsertFromComm(payload)
         return target
     end
 
-    target.submitter = submitter
-    target.reason = payload.reason or target.reason or ""
+    if incomingSubmitter and incomingSubmitter ~= "" then
+        target.submitter = incomingSubmitter
+    elseif not target.submitter or target.submitter == "" then
+        target.submitter = "Unknown"
+    end
+    if payload.reason ~= nil and payload.reason ~= "" then
+        target.reason = payload.reason
+    elseif target.reason == nil then
+        target.reason = ""
+    end
     target.bountyAmount = tonumber(payload.bountyAmount) or target.bountyAmount or 0
     target.hitMode = payload.hitMode or target.hitMode or HIT_MODE_ONE_TIME
     target.hitStatus = payload.hitStatus or target.hitStatus or HIT_STATUS_ACTIVE
@@ -377,21 +427,23 @@ function HitList:UpsertFromComm(payload)
     target.faction = payload.faction or target.faction
     target.raceId = tonumber(payload.raceId) or target.raceId or InferRaceIdFromRaceName(target.race)
     target.sex = tonumber(payload.sex) or target.sex or 0
-    local incomingLocation = NormalizeLocationPayload({
-        zone = payload.lastSeenZone,
-        subzone = payload.lastSeenSubzone,
-        mapId = payload.lastSeenMapId,
-        x = payload.lastSeenX,
-        y = payload.lastSeenY,
-        seenAt = payload.lastSeenAt,
-        source = payload.lastSeenSource,
-        approximate = payload.lastSeenApproximate,
-        confidenceYards = payload.lastSeenConfidenceYards,
-    }, "comm")
-    if incomingLocation then
-        local currentSeenAt = target.lastKnownLocation and tonumber(target.lastKnownLocation.seenAt) or 0
-        if incomingLocation.seenAt >= currentSeenAt then
-            target.lastKnownLocation = incomingLocation
+    if HasIncomingLocationPayload(payload) then
+        local incomingLocation = NormalizeLocationPayload({
+            zone = payload.lastSeenZone,
+            subzone = payload.lastSeenSubzone,
+            mapId = payload.lastSeenMapId,
+            x = payload.lastSeenX,
+            y = payload.lastSeenY,
+            seenAt = payload.lastSeenAt,
+            source = payload.lastSeenSource,
+            approximate = payload.lastSeenApproximate,
+            confidenceYards = payload.lastSeenConfidenceYards,
+        }, "comm")
+        if incomingLocation then
+            local currentSeenAt = target.lastKnownLocation and tonumber(target.lastKnownLocation.seenAt) or 0
+            if incomingLocation.seenAt >= currentSeenAt then
+                target.lastKnownLocation = incomingLocation
+            end
         end
     end
     target.createdAt = tonumber(payload.createdAt) or target.createdAt

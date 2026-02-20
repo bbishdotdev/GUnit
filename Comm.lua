@@ -17,7 +17,8 @@ local WIRE_KEY = {
     name = "n",      submitter = "s",
     guildName = "g", updatedAt = "ua",  createdAt = "ca",
 
-    reason = "r",       bountyAmount = "ba",
+    reason = "r",       reasonUpdatedAt = "ru",
+    reasonClear = "rx", bountyAmount = "ba",
     hitMode = "hm",     hitStatus = "hs",
     bountyMode = "bm",  bountyStatus = "bs",
     validated = "vl",   classToken = "ct",
@@ -213,12 +214,17 @@ local function BuildLocationMap(target, action)
 end
 
 local function BuildReasonMap(target)
+    local reason = target.reason or ""
+    local reasonTs = tonumber(target.reasonUpdatedAt) or target.updatedAt or Utils.Now()
+    local isExplicitClear = (reason == "") and (tonumber(target.reasonClearedAt) == reasonTs)
     return {
         action = "REASON",
         name = target.name,
         submitter = target.submitter,
         guildName = target.guildName or Utils.GuildName() or "",
-        reason = target.reason or "",
+        reason = reason,
+        reasonUpdatedAt = reasonTs,
+        reasonClear = isExplicitClear and "1" or "0",
         updatedAt = target.updatedAt or Utils.Now(),
     }
 end
@@ -360,7 +366,9 @@ local function HandleReason(data)
         data.submitter,
         data.guildName,
         data.reason,
-        tonumber(data.updatedAt)
+        tonumber(data.updatedAt),
+        tonumber(data.reasonUpdatedAt),
+        data.reasonClear
     )
     GUnit:NotifyDataChanged()
 end

@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.5.0
+
+### Fixed
+- **Submitter corruption during partial sync** — metadata/location packets no longer overwrite valid submitters with `Unknown` when `submitter` is absent.
+- **Last seen location corruption on sync** — core/meta sync packets no longer fabricate location from local defaults; location updates only apply when explicit `lastSeen*` fields are present.
+- **Reason wipe protection** — blank reason payloads no longer overwrite existing reasons unless sent as an explicit clear with a newer reason timestamp.
+- **Debug mode default regression** — startup now normalizes persisted settings so debug logging is only enabled when `debugMode` is literal `true`.
+
+### Changed
+- **Reason protocol hardening** — `REASON` messages now carry `reasonUpdatedAt` and explicit clear intent (`reasonClear`) for non-destructive merges.
+- Addon metadata version bumped to `0.5.0` in both runtime (`Core.lua`) and TOC (`GUnit.toc`).
+
+---
+
 ## v0.4.1
 
 ### Added

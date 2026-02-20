@@ -50,6 +50,8 @@ Full key names are mapped to 1-2 character wire keys:
 | lastSeenAt | lt | location |
 | lastSeenSource | lo | location |
 | reason | r | reason |
+| reasonUpdatedAt | ru | reason |
+| reasonClear | rx | reason |
 | killer | kl | kill |
 | zone | kz | kill |
 | ts | kt | kill |
@@ -116,10 +118,12 @@ All three share the same `updatedAt` timestamp. `UpsertFromComm` merges each par
 Self-sufficient reason message. Carries `submitter` and `guildName` so it can create a stub target via `EnsureAndSetReason` if the target doesn't exist yet.
 
 ```
-a=REASON, v=1, n=<name>, s=<submitter>, g=<guild>, r=<reason>, ua=<timestamp>
+a=REASON, v=1, n=<name>, s=<submitter>, g=<guild>, r=<reason>, ru=<reasonUpdatedAt>, rx=<reasonClear>, ua=<timestamp>
 ```
 
-~70 bytes overhead, ~175 chars budget for reason text. Sent on reason changes only (including explicit clear to empty string). During sync, sent for ALL targets to repair missed clears.
+`reasonClear` is `1` only for explicit user clears; blank `reason` without `reasonClear=1` is treated as non-destructive/no-op by receivers.
+
+~75 bytes overhead, ~165-170 chars budget for reason text. Sent on reason changes only (including explicit clear to empty string). During sync, sent for ALL targets to reconcile missed updates.
 
 ### DELETE
 
