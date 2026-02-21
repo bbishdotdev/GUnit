@@ -2,7 +2,7 @@
 ## Title: G-Unit
 ## Notes: Guild-shared PvP hit list tracker for TBC Classic
 ## Author: btbis
-## Version: 0.6.0
+## Version: 0.6.1
 ## SavedVariables: GUnitDB
 
 Utils.lua

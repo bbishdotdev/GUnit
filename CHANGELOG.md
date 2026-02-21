@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.6.1
+
+### Added
+- **Unknown submitter inline recovery dialog** — clicking "Requested by Unknown" opens a submitter override popup with `I did` and manual name update actions.
+
+### Fixed
+- **Submitter override validation** — blank submitter updates are blocked in the dialog; recovery now requires cancel, `I did`, or a valid name.
+
+### Changed
+- Bump addon metadata/version to `0.6.1` in `Core.lua` and `GUnit.toc`.
+
+---
+
 ## v0.6.0
 
 ### Fixed

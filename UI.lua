@@ -353,6 +353,17 @@ local function SaveTargetAndBroadcast(target)
     GUnit:NotifyDataChanged()
 end
 
+local function ApplySubmitterOverride(targetName, submitterName)
+    local updated, err = HitList:SetSubmitter(targetName, submitterName, Utils.PlayerName())
+    if not updated then
+        GUnit:Print(err)
+        return false
+    end
+    SaveTargetAndBroadcast(updated)
+    Comm:BroadcastReason(updated)
+    return true
+end
+
 local function RequireSelectedTarget()
     if not UI.selectedName then
         GUnit:Print("Select a target first.")
@@ -766,6 +777,7 @@ function UI:RefreshDetails()
         self.detailEditButton:Hide()
         self.detailClassPickButton:Hide()
         self.detailRacePickButton:Hide()
+        self.detailSubmitterFixButton:Hide()
         self.drawerCloseButton:Hide()
         SetDrawerOpen(false)
         return
@@ -778,7 +790,18 @@ function UI:RefreshDetails()
     SetRaceTexture(self.detailRaceIcon, target)
     self.detailFactionIcon:SetTexture(Theme.GetFactionIcon(GetDisplayFaction(target)))
     self.detailNameText:SetText(Utils.ClassColorName(target.name or "Unknown", target.classToken))
-    self.detailMetaText:SetText("Requested by " .. (target.submitter or "Unknown"))
+    local submitterValue = target.submitter or "Unknown"
+    local canMutate = HitList:CanMutate(target, Utils.PlayerName())
+    local submitterUnknown = Utils.IsSubmitterUnknown(target)
+    if submitterUnknown and canMutate then
+        self.detailMetaText:SetText("Requested by " .. submitterValue .. " (click to set)")
+        self.detailMetaText:SetTextColor(1.0, 0.85, 0.2, 1)
+        self.detailSubmitterFixButton:Show()
+    else
+        self.detailMetaText:SetText("Requested by " .. submitterValue)
+        self.detailMetaText:SetTextColor(unpack(Theme.COLOR.textMuted))
+        self.detailSubmitterFixButton:Hide()
+    end
     local areaText, coordsText, unknown, approximate = BuildLocationDisplayParts(target.lastKnownLocation)
     if unknown then
         self.detailLocationText:SetText("Location unknown")
@@ -818,7 +841,6 @@ function UI:RefreshDetails()
     local bountyModeLabels = { none = "None", first_kill = "One-time", infinite = "Indefinitely" }
     UIDropDownMenu_SetText(self.bountyModeDropdown, bountyModeLabels[target.bountyMode] or "None")
 
-    local canMutate = HitList:CanMutate(target, Utils.PlayerName())
     if not canMutate then
         self.detailEditMode = false
     end
@@ -1693,6 +1715,23 @@ function UI:Init()
     self.detailMetaText:SetPoint("TOPLEFT", self.detailClassIcon, "BOTTOMLEFT", 0, -4)
     self.detailMetaText:SetPoint("RIGHT", detailDrawer, "RIGHT", -10, 0)
     self.detailMetaText:SetJustifyH("LEFT")
+    self.detailSubmitterFixButton = CreateFrame("Button", nil, detailDrawer)
+    self.detailSubmitterFixButton:SetPoint("TOPLEFT", self.detailMetaText, "TOPLEFT", 0, 2)
+    self.detailSubmitterFixButton:SetPoint("BOTTOMRIGHT", self.detailMetaText, "BOTTOMRIGHT", 0, -2)
+    self.detailSubmitterFixButton:Hide()
+    self.detailSubmitterFixButton:SetScript("OnClick", function()
+        local target = RequireSelectedTarget()
+        if not target then return end
+        if not Utils.IsSubmitterUnknown(target) then return end
+        if not HitList:CanMutate(target, Utils.PlayerName()) then return end
+        UI._submitterTargetName = target.name
+        local popup = StaticPopup_Show("GUNIT_SUBMITTER_OVERRIDE")
+        if popup and popup.editBox then
+            popup.editBox:SetText("")
+            popup.editBox:SetFocus()
+            popup.editBox:HighlightText()
+        end
+    end)
 
     self.detailLocationIcon = UIComponents.CreateIcon(detailDrawer, 13)
     self.detailLocationIcon:SetTexture(Theme.ICON.location or Theme.ICON.fallback)
@@ -2120,6 +2159,69 @@ function UI:Init()
         whileDead = true,
         hideOnEscape = true,
         preferredIndex = 3,
+    }
+
+    StaticPopupDialogs["GUNIT_SUBMITTER_OVERRIDE"] = {
+        text = "Who submitted this kill target?\n\nI did\nOR",
+        button1 = "I did",
+        button2 = "Update",
+        hasEditBox = 1,
+        maxLetters = 12,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+        EditBoxOnEnterPressed = function(editBox)
+            local parent = editBox:GetParent()
+            local targetName = UI._submitterTargetName
+            if not targetName then
+                parent:Hide()
+                return
+            end
+            local text = strtrim(editBox:GetText() or "")
+            if text == "" then
+                GUnit:Print("Enter a submitter name or use I did.")
+                return
+            end
+            if ApplySubmitterOverride(targetName, text) then
+                UI._submitterTargetName = nil
+                parent:Hide()
+            end
+        end,
+        OnAccept = function()
+            local targetName = UI._submitterTargetName
+            if not targetName then return end
+            local me = Utils.PlayerName()
+            if ApplySubmitterOverride(targetName, me) then
+                UI._submitterTargetName = nil
+            end
+        end,
+        OnCancel = function(selfPopup, _, reason)
+            if reason ~= "clicked" then
+                UI._submitterTargetName = nil
+                return
+            end
+            local targetName = UI._submitterTargetName
+            if not targetName then return end
+            local text = strtrim((selfPopup.editBox and selfPopup.editBox:GetText()) or "")
+            if text == "" then
+                GUnit:Print("Enter a submitter name or use I did.")
+                if C_Timer and C_Timer.After then
+                    C_Timer.After(0, function()
+                        local popup = StaticPopup_Show("GUNIT_SUBMITTER_OVERRIDE")
+                        if popup and popup.editBox then
+                            popup.editBox:SetText("")
+                            popup.editBox:SetFocus()
+                            popup.editBox:HighlightText()
+                        end
+                    end)
+                end
+                return
+            end
+            if ApplySubmitterOverride(targetName, text) then
+                UI._submitterTargetName = nil
+            end
+        end,
     }
 
     self.selectedName = nil
