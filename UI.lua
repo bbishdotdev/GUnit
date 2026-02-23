@@ -2171,6 +2171,32 @@ function UI:Init()
         whileDead = true,
         hideOnEscape = true,
         preferredIndex = 3,
+        OnShow = function(selfPopup)
+            if selfPopup and selfPopup.editBox then
+                selfPopup.editBox:SetFocus()
+                selfPopup.editBox:HighlightText()
+            end
+            if selfPopup and selfPopup.button2 then
+                selfPopup.button2:SetScript("OnClick", function(btn)
+                    local popup = btn and btn:GetParent() or nil
+                    local targetName = UI._submitterTargetName
+                    if not popup or not targetName then return end
+                    local text = strtrim((popup.editBox and popup.editBox:GetText()) or "")
+                    if text == "" then
+                        GUnit:Print("Enter a submitter name or use I did.")
+                        if popup.editBox then
+                            popup.editBox:SetFocus()
+                            popup.editBox:HighlightText()
+                        end
+                        return
+                    end
+                    if ApplySubmitterOverride(targetName, text) then
+                        UI._submitterTargetName = nil
+                        popup:Hide()
+                    end
+                end)
+            end
+        end,
         EditBoxOnEnterPressed = function(editBox)
             local parent = editBox:GetParent()
             local targetName = UI._submitterTargetName
@@ -2196,31 +2222,8 @@ function UI:Init()
                 UI._submitterTargetName = nil
             end
         end,
-        OnCancel = function(selfPopup, _, reason)
-            if reason ~= "clicked" then
-                UI._submitterTargetName = nil
-                return
-            end
-            local targetName = UI._submitterTargetName
-            if not targetName then return end
-            local text = strtrim((selfPopup.editBox and selfPopup.editBox:GetText()) or "")
-            if text == "" then
-                GUnit:Print("Enter a submitter name or use I did.")
-                if C_Timer and C_Timer.After then
-                    C_Timer.After(0, function()
-                        local popup = StaticPopup_Show("GUNIT_SUBMITTER_OVERRIDE")
-                        if popup and popup.editBox then
-                            popup.editBox:SetText("")
-                            popup.editBox:SetFocus()
-                            popup.editBox:HighlightText()
-                        end
-                    end)
-                end
-                return
-            end
-            if ApplySubmitterOverride(targetName, text) then
-                UI._submitterTargetName = nil
-            end
+        OnCancel = function()
+            UI._submitterTargetName = nil
         end,
     }
 
