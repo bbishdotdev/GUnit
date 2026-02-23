@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.2
+
+### Fixed
+- **Submitter update modal loop** — clicking `Update` with a typed name now applies directly instead of reopening/resetting the popup.
+
+### Changed
+- Bump addon metadata/version to `0.6.2` in `Core.lua` and `GUnit.toc`.
+
+---
+
 ## v0.6.1
 
 ### Added
